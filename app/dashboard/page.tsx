@@ -1,6 +1,7 @@
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import Image from "next/image";
+import cartoon from "../assets/images/Group 5.png"
 type DashboardProps = {
   name: string;
 };
@@ -20,11 +21,12 @@ export default function Dashboard({ name }: DashboardProps) {
                 Here are your teaching tools for today
               </p>
             </div>
-            <Image src="/images/dashboard.png" alt="dashboard" width={100} height={100} />
+            <Image src={cartoon} alt="dashboard" />
           </div>
         </section>
-        <section className="sec-2">
+        <section className="sec-2 w-2/5">
           <img src="" alt="" />
+          c
         </section>
         </main>
       </section>
