@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { ChevronDown, ChevronUp, FileText, Download, PlusCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Download,
+  PlusCircle,
+} from "lucide-react";
 import Link from "next/link";
+import { supabase } from "../lib/supabaseClient";
+import { PostgrestError } from "@supabase/supabase-js";
 
 type LectureFile = { name: string; url: string };
 type Lecture = { number: string; title: string; files: LectureFile[] };
@@ -28,13 +36,39 @@ export default function Courses() {
   };
 
   const updateLectureFiles = (index: number, file: LectureFile) => {
-  setLectures(prev => {
-    const updated = [...prev];
-    updated[index].files.push(file);
-    return updated;
-  });
-};
+    setLectures((prev) => {
+      const updated = [...prev];
+      updated[index].files.push(file);
+      return updated;
+    });
+  };
 
+  // Api Integration
+  const [courses, setCourses]: any[] = useState([]);
+  const [fetchError, setFetchError] = useState("");
+
+  useEffect(() => {
+    const getCourses = async () => {
+      const { data, error } = await supabase.
+      from("courses")
+      .select(`
+          *,
+          lecturer:lecturer_id(full_name)
+        `);
+
+      if (data) {
+        setCourses(data);
+        setFetchError("");
+        console.log("Courses data:", data);
+      }
+      if (error) {
+        setFetchError(error.message);
+        setCourses([]);
+        console.log("Error fetching courses:", error.message);
+      }
+    };
+    getCourses();
+  }, []);
 
   return (
     <div className="flex w-full  bg-white">
@@ -44,18 +78,21 @@ export default function Courses() {
         <h1 className="text-3xl font-bold mb-6 mt-4 text-black">Courses</h1>
 
         <main className="bg-gray-50 min-h-screen p-6 w-full">
-
           {/* LEFT MAIN COLUMN */}
           <section className="flex flex-col gap-6 col-span-1 xl:col-span-2">
-
             {/* Header */}
             <div className="flex items-center w-full mb-6">
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-black">
-                  ENT 102 – Introduction to English 23
-                </h1>
-                <p className="text-sm text-gray-500">Lecturer: Dr. Johnson</p>
-              </div>
+              {courses &&
+                courses.map((course: any, index: any) => (
+                  <div className="flex flex-col" key={index}>
+                    <h1 className="text-2xl font-bold text-black">
+                      ({course.course_code}) {course.course_title}
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      {course.lecturer?.full_name}
+                    </p>
+                  </div>
+                ))}
 
               {/* Button */}
               <button
@@ -69,7 +106,9 @@ export default function Courses() {
 
             {/* COURSE CONTENT */}
             <section className="lectures bg-white p-4 rounded-lg shadow">
-              <h1 className="text-black font-bold text-xl mb-4">Course content</h1>
+              <h1 className="text-black font-bold text-xl mb-4">
+                Course content
+              </h1>
 
               {lectures.length === 0 && (
                 <p className="text-gray-500">No lectures created yet.</p>
@@ -83,7 +122,7 @@ export default function Courses() {
                     lec={lec}
                     expandedIndex={expandedIndex}
                     toggleLecture={toggleLecture}
-                     updateLectureFiles={updateLectureFiles}
+                    updateLectureFiles={updateLectureFiles}
                   />
                 ))}
               </div>
@@ -97,7 +136,8 @@ export default function Courses() {
         <div className="fixed inset-0 bg-white bg-opacity-10 flex items-center justify-center z-50">
           <div className="bg-white p-10 rounded-lg border border-[#5955B3]  w-280 h-80">
             <h1 className="text-black text-2xl font-bold pb-8">
-              Enter your lecture Number and Title</h1>
+              Enter your lecture Number and Title
+            </h1>
             <input
               type="text"
               placeholder="Lecture number"
@@ -114,31 +154,30 @@ export default function Courses() {
               onChange={(e) => setLectureTitle(e.target.value)}
             />
             <div className="flex justify-center gap-4 mt-6">
-  <button
-    className="px-6 py-3 bg-[#5955B3] text-white rounded-lg text-base font-semibold"
-    onClick={() => {
-      if (lectureNumber && lectureTitle) {
-        setLectures([
-          ...lectures,
-          { number: lectureNumber, title: lectureTitle, files: [] }
-        ]);
-        setLectureNumber("");
-        setLectureTitle("");
-        closeModal();
-      }
-    }}
-  >
-    Save
-  </button>
+              <button
+                className="px-6 py-3 bg-[#5955B3] text-white rounded-lg text-base font-semibold"
+                onClick={() => {
+                  if (lectureNumber && lectureTitle) {
+                    setLectures([
+                      ...lectures,
+                      { number: lectureNumber, title: lectureTitle, files: [] },
+                    ]);
+                    setLectureNumber("");
+                    setLectureTitle("");
+                    closeModal();
+                  }
+                }}
+              >
+                Save
+              </button>
 
-  <button
-    className="px-6 py-3 bg-red-600 text-white rounded-lg text-base font-semibold"
-    onClick={closeModal}
-  >
-    Cancel
-  </button>
-</div>
-
+              <button
+                className="px-6 py-3 bg-red-600 text-white rounded-lg text-base font-semibold"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -157,7 +196,13 @@ interface LectureRowProps {
   updateLectureFiles: (index: number, file: LectureFile) => void;
 }
 
-function LectureRow({ lec, index, expandedIndex, toggleLecture, updateLectureFiles }: LectureRowProps) {
+function LectureRow({
+  lec,
+  index,
+  expandedIndex,
+  toggleLecture,
+  updateLectureFiles,
+}: LectureRowProps) {
   const isOpen = expandedIndex === index;
   return (
     <div>
@@ -169,79 +214,79 @@ function LectureRow({ lec, index, expandedIndex, toggleLecture, updateLectureFil
         <span className="font-medium text-lg text-black">
           Lecture {lec.number}: {lec.title}
         </span>
-        {isOpen ? <ChevronUp className="w-5 h-5 text-black" /> : <ChevronDown className="w-5 h-5 text-black" />}
+        {isOpen ? (
+          <ChevronUp className="w-5 h-5 text-black" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-black" />
+        )}
       </div>
       {/* Expanded Content */}
       {isOpen && (
-  <div className="bg-gray-50 p-6 flex justify-between items-start relative min-h-[180px]">
+        <div className="bg-gray-50 p-6 flex justify-between items-start relative min-h-[180px]">
+          {/* LEFT CONTENT */}
+          <div className="flex flex-col gap-4">
+            {/* PDF List */}
+            <div className="flex flex-col gap-2">
+              {/* If no file uploaded yet */}
+              {(!lec.files || lec.files.length === 0) && (
+                <div className="flex items-center gap-2 text-lg">
+                  <FileText className="w-5 h-5 text-black" />
+                  <span className="text-black">No notes uploaded yet</span>
+                </div>
+              )}
 
-    {/* LEFT CONTENT */}
-    <div className="flex flex-col gap-4">
+              {/* If files exist, list them */}
+              {lec.files?.map((file, i: number) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between w-full"
+                >
+                  <div className="flex items-center gap-2 text-lg">
+                    <FileText className="w-5 h-5 text-black" />
+                    <span className="text-black">{file.name}</span>
+                  </div>
 
-      {/* PDF List */}
-      <div className="flex flex-col gap-2">
-
-        {/* If no file uploaded yet */}
-        {(!lec.files || lec.files.length === 0) && (
-          <div className="flex items-center gap-2 text-lg">
-            <FileText className="w-5 h-5 text-black" />
-            <span className="text-black">No notes uploaded yet</span>
-          </div>
-        )}
-
-        {/* If files exist, list them */}
-        {lec.files?.map((file, i: number) => (
-          <div key={i} className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2 text-lg">
-              <FileText className="w-5 h-5 text-black" />
-              <span className="text-black">{file.name}</span>
+                  <button onClick={() => window.open(file.url, "_blank")}>
+                    <Download className="w-6 h-6 text-black cursor-pointer" />
+                  </button>
+                </div>
+              ))}
             </div>
-
-            <button onClick={() => window.open(file.url, "_blank")}>
-              <Download className="w-6 h-6 text-black cursor-pointer" />
-            </button>
           </div>
-        ))}
 
-      </div>
-    </div>
+          {/* RIGHT SIDE BUTTONS — FIXED AT BOTTOM RIGHT */}
+          <div className="absolute right-6 bottom-6 flex gap-4">
+            {/* Upload PDF BUTTON */}
+            <label className="px-4 py-2 bg-[#5955B3] text-white rounded-lg flex items-center gap-2 cursor-pointer">
+              <FileText className="w-5 h-5" />
+              Upload note
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
 
-    {/* RIGHT SIDE BUTTONS — FIXED AT BOTTOM RIGHT */}
-    <div className="absolute right-6 bottom-6 flex gap-4">
+                  const fileData = {
+                    name: file.name,
+                    url: URL.createObjectURL(file),
+                  };
 
-      {/* Upload PDF BUTTON */}
-      <label className="px-4 py-2 bg-[#5955B3] text-white rounded-lg flex items-center gap-2 cursor-pointer">
-        <FileText className="w-5 h-5" />
-        Upload note
-        <input
-          type="file"
-          accept="application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
+                  updateLectureFiles(index, fileData);
+                }}
+              />
+            </label>
 
-            const fileData = {
-              name: file.name,
-              url: URL.createObjectURL(file),
-            };
-
-            updateLectureFiles(index, fileData);
-          }}
-        />
-      </label>
-
-      {/* Create Quiz BUTTON */}
-      <Link href='/quiz'>
-      <button className="px-4 py-2 bg-[#5955B3] text-white rounded-lg flex items-center gap-2">
-        <PlusCircle className="w-5 h-5" /> Create quiz
-      </button>
-      </Link>
-    </div>
-
-  </div>
-)}
-
+            {/* Create Quiz BUTTON */}
+            <Link href="/quiz">
+              <button className="px-4 py-2 bg-[#5955B3] text-white rounded-lg flex items-center gap-2">
+                <PlusCircle className="w-5 h-5" /> Create quiz
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

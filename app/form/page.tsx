@@ -5,8 +5,26 @@ import { User, Mail, BookOpen, Hash } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from '../assets/logo2.png'
+// import supabase from '../lib/supabaseClient';
 
 export default function Form() {
+  type FormData = {
+    name: string;
+    email: string;
+    courseTitle: string;
+    courseCode: string;
+  };
+
+// const [formData , setFormData]: FormData = React.useState();
+
+// const postData = async ()=>{
+// const {data, error} = await supabase
+// .from('courses')
+// .insert([
+//   {name: formData.name, email: formData.email, course_title: formData.courseTitle, course_code: formData.courseCode}
+// ])
+// }
+
   return (
     <div className="w-full h-screen bg-[#5955B3] flex items-center justify-center p-4">
       
@@ -83,7 +101,7 @@ export default function Form() {
             type="submit"
             className="mt-4 w-full bg-[#5955B3] text-white py-3 rounded-lg text-lg font-semibold hover:bg-[#4a48a0] transition"
           >
-            Create Account
+            Submit
           </button>
           </Link>
         </form>
