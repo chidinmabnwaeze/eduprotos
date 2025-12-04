@@ -10,8 +10,9 @@ import {
   PlusCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { supabase } from "../lib/supabaseClient";
 import { PostgrestError } from "@supabase/supabase-js";
+import { getCourses } from "../lib/api/courses_api";
+import {getCourseById} from "../lib/api/courses_api";
 
 type LectureFile = { name: string; url: string };
 type Lecture = { number: string; title: string; files: LectureFile[] };
@@ -44,17 +45,14 @@ export default function Courses() {
   };
 
   // Api Integration
+
+  //Get courses
   const [courses, setCourses]: any[] = useState([]);
   const [fetchError, setFetchError] = useState("");
 
   useEffect(() => {
-    const getCourses = async () => {
-      const { data, error } = await supabase.
-      from("courses")
-      .select(`
-          *,
-          lecturer:lecturer_id(full_name)
-        `);
+    async function fetchData() {
+      const { data, error } = await getCourses();
 
       if (data) {
         setCourses(data);
@@ -66,8 +64,24 @@ export default function Courses() {
         setCourses([]);
         console.log("Error fetching courses:", error.message);
       }
-    };
-    getCourses();
+    }
+    fetchData();
+  }, []);
+
+  // get course by id
+  useEffect(() => {
+    async function fetchCourse(id: number) {
+      const courseId = courses.id; 
+      const { data, error } = await getCourseById(courseId);  
+
+     if (data){
+        console.log("Course data by ID:", data);
+     }
+      if (error){   
+        console.log("Error fetching course by ID:", error.message);
+      } 
+    }
+    fetchCourse(courses.id);
   }, []);
 
   return (
@@ -83,10 +97,10 @@ export default function Courses() {
             {/* Header */}
             <div className="flex items-center w-full mb-6">
               {courses &&
-                courses.map((course: any, index: any) => (
-                  <div className="flex flex-col" key={index}>
+                courses.map((course: any) => (
+                  <div className="flex flex-col" key={course.id}>
                     <h1 className="text-2xl font-bold text-black">
-                      ({course.course_code}) {course.course_title}
+                      {course.course_code} : {course.course_title}
                     </h1>
                     <p className="text-sm text-gray-500">
                       {course.lecturer?.full_name}

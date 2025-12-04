@@ -1,38 +1,80 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { User, Mail, BookOpen, Hash } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import logo from '../assets/logo2.png'
-// import supabase from '../lib/supabaseClient';
+import logo from "../assets/logo2.png";
+import { getLecturerById, postCourse } from "../lib/api/courses_api";
 
+type FormData = {
+  lecturer_id: string;
+  email: string;
+  courseTitle: string;
+  courseCode: string;
+};
 export default function Form() {
-  type FormData = {
-    name: string;
-    email: string;
-    courseTitle: string;
-    courseCode: string;
-  };
+  const [lecturerId, setLecturerId] = React.useState<string>("");
 
-// const [formData , setFormData]: FormData = React.useState();
+  const [formData, setFormData] = React.useState<FormData>({
+    lecturer_id: "",
+    email: "",
+    courseTitle: "",
+    courseCode: "",
+  });
 
-// const postData = async ()=>{
-// const {data, error} = await supabase
-// .from('courses')
-// .insert([
-//   {name: formData.name, email: formData.email, course_title: formData.courseTitle, course_code: formData.courseCode}
-// ])
-// }
+  useEffect(() => {
+    // Fetch or generate lecturer ID here
+    const fetchLecturerId = async () => {
+      // Simulate fetching lecturer ID
+      const id = await getLecturerById(1).then((res) => res.data?.id || "");
+
+      setLecturerId(id);
+      setFormData((prevData) => ({
+        ...prevData,
+        lecturer_id: id,
+      }));
+    };
+
+    fetchLecturerId();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const response = await postCourse({
+      lecturer_id: formData.lecturer_id,
+      title: formData.courseTitle,
+      code: formData.courseCode,
+    });
+
+    if (response.data) {
+      console.log("Course added successfully:", response);
+
+      setFormData({
+        lecturer_id: "",
+        email: "",
+        courseTitle: "",
+        courseCode: "",
+      });
+    }
+    if (response.error) {
+      console.error("Error adding course:", response.error);
+    }
+  }
 
   return (
     <div className="w-full h-screen bg-[#5955B3] flex items-center justify-center p-4">
-      
       {/* White Form Card */}
       <section className="bg-white w-full max-w-xl rounded-2xl shadow-lg p-10">
-        
         {/* Title */}
-        <Image src={logo} alt="edu protos logo" width={150} height={100} className="mb-6"/>
+        <Image
+          src={logo}
+          alt="edu protos logo"
+          width={150}
+          height={100}
+          className="mb-6"
+        />
         <h1 className="text-center text-3xl font-bold text-[#5955B3]">
           Welcome Educators
         </h1>
@@ -41,8 +83,7 @@ export default function Form() {
         </h2>
 
         {/* FORM FIELDS */}
-        <form className="flex flex-col gap-6">
-
+        <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
           {/* NAME */}
           <div>
             <label className="text-[#5955B3] text-sm">Name</label>
@@ -50,14 +91,18 @@ export default function Form() {
               <User className="w-5 h-5 text-[#5955B3] mr-3" />
               <input
                 type="text"
-                placeholder="Enter First and Last Name"
+                placeholder="Enter Full Name"
                 className="placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.lecturer_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, lecturer_id: e.target.value })
+                }
               />
             </div>
           </div>
 
           {/* EMAIL */}
-          <div>
+          {/* <div>
             <label className="text-[#5955B3] text-sm">Email Address</label>
             <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg px-3 py-3 mt-1">
               <Mail className="w-5 h-5 text-[#5955B3] mr-3" />
@@ -67,7 +112,7 @@ export default function Form() {
                 className="placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
               />
             </div>
-          </div>
+          </div> */}
 
           {/* COURSE TITLE */}
           <div>
@@ -78,6 +123,10 @@ export default function Form() {
                 type="text"
                 placeholder="Enter Course Title"
                 className=" placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.courseTitle}
+                onChange={(e) =>
+                  setFormData({ ...formData, courseTitle: e.target.value })
+                }
               />
             </div>
           </div>
@@ -91,18 +140,22 @@ export default function Form() {
                 type="text"
                 placeholder="Enter Course Code "
                 className=" placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.courseCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, courseCode: e.target.value })
+                }
               />
             </div>
           </div>
 
           {/* BUTTON */}
-          <Link href='/dashboard'>
-          <button
-            type="submit"
-            className="mt-4 w-full bg-[#5955B3] text-white py-3 rounded-lg text-lg font-semibold hover:bg-[#4a48a0] transition"
-          >
-            Submit
-          </button>
+          <Link href="/dashboard">
+            <button
+              type="submit"
+              className="mt-4 w-full bg-[#5955B3] text-white py-3 rounded-lg text-lg font-semibold hover:bg-[#4a48a0] transition"
+            >
+              Submit
+            </button>
           </Link>
         </form>
       </section>
