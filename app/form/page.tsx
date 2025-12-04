@@ -18,7 +18,7 @@ export default function Form() {
         <h1 className="text-center text-3xl font-bold text-[#5955B3]">
           Welcome Educators
         </h1>
-        <h2 className="text-center text-xl  text-[#a29fe2] mt-1 mb-8">
+        <h2 className="text-center text-xl  text-[#ada9f0] mt-1 mb-8">
           Enter your details below to begin
         </h2>
 
