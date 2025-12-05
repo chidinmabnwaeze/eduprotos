@@ -1,116 +1,110 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { User, Mail, BookOpen, Hash } from "lucide-react";
-import Link from "next/link";
+import React from "react";
+import { User, Mail, Lock, BookOpen, Hash } from "lucide-react";
 import Image from "next/image";
 import logo from "../assets/logo2.png";
-import { postCourse, CreateLecturer } from "../lib/api/courses_api";
+import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
-type FormData = {
-  name: string;
-  lecturer_id: string;
-  email: string;
-  courseTitle: string;
-  courseCode: string;
-};
 export default function Form() {
   const router = useRouter();
 
-  const [lecturerId, setLecturerId] = React.useState<string>("");
-
-  const [formData, setFormData] = React.useState<FormData>({
+  const [formData, setFormData] = React.useState({
     name: "",
-    lecturer_id: "",
     email: "",
+    department: "",
+    password: "",
     courseTitle: "",
     courseCode: "",
   });
 
-  // useEffect(() => {
-  //   // Fetch or generate lecturer ID here
-  //   const fetchLecturerId = async () => {
-  //     // Simulate fetching lecturer ID
-  //     // const id = await getLecturerById(1).then((res) => res.data?.id || "");
-  //     const profile = await getLecturerById(1); // This must return a UUID, not number 1!
-
-  //     const id = profile.data?.id || "";
-
-  //     // setLecturerId(id);`
-  //     setFormData((prevData) => ({
-  //       ...prevData,
-  //       lecturer_id: id,
-  //     }));
-  //   };
-
-  //   fetchLecturerId();
-  // }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const lecturerId = await CreateLecturer(formData.name);
-
-    const response = await postCourse({
-      lecturer_id: lecturerId,
-      title: formData.courseTitle,
-      code: formData.courseCode,
+    // Create user with Supabase Auth with metadata
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.name,
+          department: formData.department,
+        },
+      },
     });
 
-    console.log("Sending:", {
-      lecturer_id: lecturerId,
-      title: formData.courseTitle,
-      code: formData.courseCode,
-    });
-
-    if (response.data) {
-      console.log("Course added successfully:", response);
-
-      setFormData({
-        name: "",
-        lecturer_id: "",
-        email: "",
-        courseTitle: "",
-        courseCode: "",
-      });
-      router.push("/dashboard");
+    if (authError) {
+      console.error("Signup error:", authError);
+      alert(authError.message);
+      return;
     }
-    if (response.error) {
-      console.error("Error adding course:", response.error);
+
+    const user = authData.user;
+    if (!user) return alert("Could not create user.");
+
+    // Create lecturer profile
+    const { error: profileError } = await supabase.from("profiles").insert([
+      {
+        id: user.id, // UUID from auth
+        full_name: formData.name,
+        department: formData.department,
+      },
+    ]);
+
+    if (profileError) {
+      console.error("Profile insert error:", profileError);
+      alert(profileError.message);
+      return;
     }
+
+    // Add course
+    const { error: courseError } = await supabase.from("courses").insert([
+      {
+        course_title: formData.courseTitle,
+        course_code: formData.courseCode,
+        lecturer_id: user.id,
+      },
+    ]);
+
+    if (courseError) {
+      console.error("Course insert error:", courseError);
+      alert(courseError.message);
+      return;
+    }
+
+    // 4️⃣ Redirect to dashboard
+    router.push("/dashboard");
   }
 
   return (
     <div className="w-full h-screen bg-[#5955B3] flex items-center justify-center p-4">
-      {/* White Form Card */}
       <section className="bg-white w-full max-w-xl rounded-2xl shadow-lg p-10">
-        {/* Title */}
         <Image
           src={logo}
-          alt="edu protos logo"
+          alt="logo"
           width={150}
           height={100}
           className="mb-6"
         />
-        <h1 className="text-center text-3xl font-bold text-[#5955B3]">
-          Welcome Educators
-        </h1>
-        <h2 className="text-center text-xl  text-[#ada9f0] mt-1 mb-8">
-          Enter your details below to begin
-        </h2>
 
-        {/* FORM FIELDS */}
+        <h1 className="text-center text-3xl font-bold text-[#5955B3]">
+          Lecturer Registration
+        </h1>
+        <p className="text-center text-lg text-[#ada9f0] mb-8">
+          Create your account to begin teaching
+        </p>
+
         <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
           {/* NAME */}
           <div>
-            <label className="text-[#5955B3] text-sm">Name</label>
-            <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg px-3 py-3 mt-1">
+            <label className="text-[#5955B3] text-sm">Full Name</label>
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
               <User className="w-5 h-5 text-[#5955B3] mr-3" />
               <input
                 type="text"
                 placeholder="Enter Full Name"
-                className="placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -120,27 +114,65 @@ export default function Form() {
           </div>
 
           {/* EMAIL */}
-          {/* <div>
-            <label className="text-[#5955B3] text-sm">Email Address</label>
-            <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg px-3 py-3 mt-1">
+          <div>
+            <label className="text-[#5955B3] text-sm">email</label>
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
               <Mail className="w-5 h-5 text-[#5955B3] mr-3" />
               <input
-                type="email"
-                placeholder="Enter Email"
-                className="placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                type="text"
+                placeholder="Enter email"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
               />
             </div>
-          </div> */}
+          </div>
+
+          {/*department */}
+          <div>
+            <label className="text-[#5955B3] text-sm">Department</label>
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
+              <Mail className="w-5 h-5 text-[#5955B3] mr-3" />
+              <input
+                type="text"
+                placeholder="Enter Department"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.department}
+                onChange={(e) =>
+                  setFormData({ ...formData, department: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          {/* PASSWORD */}
+          <div>
+            <label className="text-[#5955B3] text-sm">Password</label>
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
+              <Lock className="w-5 h-5 text-[#5955B3] mr-3" />
+              <input
+                type="password"
+                placeholder="Enter Password"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+            </div>
+          </div>
 
           {/* COURSE TITLE */}
           <div>
             <label className="text-[#5955B3] text-sm">Course Title</label>
-            <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg px-3 py-3 mt-1">
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
               <BookOpen className="w-5 h-5 text-[#5955B3] mr-3" />
               <input
                 type="text"
                 placeholder="Enter Course Title"
-                className=" placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
                 value={formData.courseTitle}
                 onChange={(e) =>
                   setFormData({ ...formData, courseTitle: e.target.value })
@@ -152,12 +184,12 @@ export default function Form() {
           {/* COURSE CODE */}
           <div>
             <label className="text-[#5955B3] text-sm">Course Code</label>
-            <div className="flex items-center bg-gray-100 border border-gray-200 rounded-lg px-3 py-3 mt-1">
+            <div className="flex items-center bg-gray-100 rounded-lg px-3 py-3 mt-1">
               <Hash className="w-5 h-5 text-[#5955B3] mr-3" />
               <input
                 type="text"
-                placeholder="Enter Course Code "
-                className=" placeholder-[#5955B3] bg-transparent flex-1 text-gray-700 focus:outline-none"
+                placeholder="Enter Course Code"
+                className="bg-transparent flex-1 text-gray-700 focus:outline-none"
                 value={formData.courseCode}
                 onChange={(e) =>
                   setFormData({ ...formData, courseCode: e.target.value })
@@ -166,13 +198,11 @@ export default function Form() {
             </div>
           </div>
 
-          {/* BUTTON */}
-
           <button
             type="submit"
             className="mt-4 w-full bg-[#5955B3] text-white py-3 rounded-lg text-lg font-semibold hover:bg-[#4a48a0] transition"
           >
-            Submit
+            Register & Continue
           </button>
         </form>
       </section>
