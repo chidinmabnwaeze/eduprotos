@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import {
   ChevronDown,
@@ -12,7 +12,10 @@ import {
 import Link from "next/link";
 import { PostgrestError } from "@supabase/supabase-js";
 import { getCourses } from "../lib/api/courses_api";
-import {getCourseById} from "../lib/api/courses_api";
+import { getCoursesByLecturerId } from "../lib/api/courses_api";
+import { getCurrentUser } from "../lib/api/auth";
+import { getUser } from "../lib/api/auth";
+import { supabase } from "../lib/supabaseClient";
 
 type LectureFile = { name: string; url: string };
 type Lecture = { number: string; title: string; files: LectureFile[] };
@@ -50,39 +53,69 @@ export default function Courses() {
   const [courses, setCourses]: any[] = useState([]);
   const [fetchError, setFetchError] = useState("");
 
-  useEffect(() => {
-    async function fetchData() {
-      const { data, error } = await getCourses();
+  // useEffect(() => {
+  //   async function fetchData() {
+  //     const { data, error } = await getCourses();
 
-      if (data) {
-        setCourses(data);
-        setFetchError("");
-        console.log("Courses data:", data);
-      }
-      if (error) {
-        setFetchError(error.message);
-        setCourses([]);
-        console.log("Error fetching courses:", error.message);
-      }
-    }
-    fetchData();
-  }, []);
+  //     if (data) {
+  //       setCourses(data);
+  //       setFetchError("");
+  //       console.log("Courses data:", data);
+  //     }
+  //     if (error) {
+  //       setFetchError(error.message);
+  //       setCourses([]);
+  //       console.log("Error fetching courses:", error.message);
+  //     }
+  //   }
+  //   fetchData();
+  // }, []);
 
   // get course by id
-  useEffect(() => {
-    async function fetchCourse(id: number) {
-      const courseId = courses.id; 
-      const { data, error } = await getCourseById(courseId);  
+  // useEffect(() => {
+  //   async function fetchCourse(id: number) {
+  //     const courseId = courses.id;
+  //     const { data, error } = await getCourseById(courseId);
 
-     if (data){
-        console.log("Course data by ID:", data);
-     }
-      if (error){   
-        console.log("Error fetching course by ID:", error.message);
-      } 
+  //    if (data){
+  //       console.log("Course data by ID:", data);
+  //    }
+  //     if (error){
+  //       console.log("Error fetching course by ID:", error.message);
+  //     }
+  //   }
+  //   fetchCourse(courses.id);
+  // }, []);
+
+useEffect(() => {
+  async function fetchCourse() {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      setFetchError("No user logged in");
+      return;
     }
-    fetchCourse(courses.id);
-  }, []);
+
+    const user = session.user;
+
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, course_title, course_code, lecturer_id(full_name)")
+      .eq("lecturer_id", user.id);
+
+    if (error) {
+      console.log("Error fetching courses by Lecturer ID:", error.message);
+      setFetchError(error.message);
+      return;
+    }
+
+    setCourses(data || []);
+    setFetchError("");
+  }
+
+  fetchCourse();
+}, []);
+
 
   return (
     <div className="flex w-full  bg-white">
@@ -96,6 +129,7 @@ export default function Courses() {
           <section className="flex flex-col gap-6 col-span-1 xl:col-span-2">
             {/* Header */}
             <div className="flex items-center w-full mb-6">
+               {fetchError && <p className="text-red-500">{fetchError}</p>}
               {courses &&
                 courses.map((course: any) => (
                   <div className="flex flex-col" key={course.id}>
@@ -103,7 +137,7 @@ export default function Courses() {
                       {course.course_code} : {course.course_title}
                     </h1>
                     <p className="text-sm text-gray-500">
-                      {course.lecturer?.full_name}
+                      {course.lecturer_id?.full_name}
                     </p>
                   </div>
                 ))}

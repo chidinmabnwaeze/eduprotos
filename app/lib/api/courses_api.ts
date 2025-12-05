@@ -2,16 +2,14 @@ import { supabase } from "../supabaseClient";
 
 //get courses api
 export const getCourses = async () => {
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      `
+  const { data, error } = await supabase.from("courses").select(
+    `
       *,
       lecturer:lecturer_id(full_name)
     `
-    )
+  );
   return { data, error };
-  };
+};
 
 // export const getLecturers = async () => {
 //   const { data, error } = await supabase.from("profiles").select(`
@@ -51,15 +49,32 @@ export async function CreateLecturer(name: string) {
   return newProfile.id;
 }
 
+// export const getCourseById = async (courseId: number) => {
+//   const { data, error } = await supabase
+//     .from("courses")
+//     .select(`*, lecturer:lecturer_id(full_name)`)
+//     .eq("id", courseId)
+//     .single();
+//   return { data, error };
+// };
 
-export const getCourseById = async (courseId: number) => {
+// Get courses for the logged-in lecturer
+export const getCoursesByLecturerId = async () => {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (!user) return { data: null, error: new Error("User not logged in") };
+
   const { data, error } = await supabase
     .from("courses")
-    .select(`*, lecturer:lecturer_id(full_name)`)
-    .eq("id", courseId)
-    .single();
+    .select("id, course_title, course_code, lecturer_id(full_name)") // make sure 'lecturer_id' is the FK column
+    .eq("lecturer_id", user.id);
+
   return { data, error };
 };
+
 
 export const postCourse = async (course: {
   title: string;

@@ -6,6 +6,7 @@ import Image from "next/image";
 import logo from "../assets/logo2.png";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { register } from "../lib/api/auth";
 
 export default function Form() {
   const router = useRouter();
@@ -19,63 +20,80 @@ export default function Form() {
     courseCode: "",
   });
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
 
-    // Create user with Supabase Auth with metadata
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          full_name: formData.name,
-          department: formData.department,
-        },
-      },
-    });
-
-    if (authError) {
-      console.error("Signup error:", authError);
-      alert(authError.message);
-      return;
-    }
-
-    const user = authData.user;
-    if (!user) return alert("Could not create user.");
-
-    // Create lecturer profile
-    const { error: profileError } = await supabase.from("profiles").insert([
-      {
-        id: user.id, // UUID from auth
+  // 1️⃣ Create user in Supabase Auth with metadata
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    email: formData.email,
+    password: formData.password,
+    options: {
+      data: {
         full_name: formData.name,
         department: formData.department,
       },
-    ]);
+    },
+  });
 
-    if (profileError) {
-      console.error("Profile insert error:", profileError);
-      alert(profileError.message);
-      return;
-    }
-
-    // Add course
-    const { error: courseError } = await supabase.from("courses").insert([
-      {
-        course_title: formData.courseTitle,
-        course_code: formData.courseCode,
-        lecturer_id: user.id,
-      },
-    ]);
-
-    if (courseError) {
-      console.error("Course insert error:", courseError);
-      alert(courseError.message);
-      return;
-    }
-
-    // 4️⃣ Redirect to dashboard
-    router.push("/dashboard");
+  if (signUpError) {
+    console.error("Signup error:", signUpError);
+    alert(signUpError.message);
+    return;
   }
+
+  // 2️⃣ Sign in the user immediately after signup
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    email: formData.email,
+    password: formData.password,
+  });
+
+  if (signInError) {
+    console.error("Sign-in error:", signInError);
+    alert(signInError.message);
+    return;
+  }
+
+  const user = signInData.user;
+  if (!user) {
+    alert("Could not log in user after signup.");
+    return;
+  }
+
+  // 3️⃣ Create lecturer profile
+  const { error: profileError } = await supabase.from("profiles").insert([
+    {
+      id: user.id,
+      full_name: formData.name,
+      department: formData.department,
+    },
+  ]);
+
+  if (profileError) {
+    console.error("Profile insert error:", profileError);
+    alert(profileError.message);
+    return;
+  }
+
+  // 4️⃣ Insert course
+  const { error: courseError } = await supabase.from("courses").insert([
+    {
+      course_title: formData.courseTitle,
+      course_code: formData.courseCode,
+      lecturer_id: user.id,
+    },
+  ]);
+
+  if (courseError) {
+    console.error("Course insert error:", courseError);
+    alert(courseError.message);
+    return;
+  }
+
+  // 5️⃣ Navigate to dashboard
+  router.push("/dashboard");
+}
+
+
 
   return (
     <div className="w-full h-screen bg-[#5955B3] flex items-center justify-center p-4">

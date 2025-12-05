@@ -5,10 +5,11 @@ import StatsCards from "../components/StatsCard";
 import DummyStats from "../components/DummyStats";
 import RecentNotes from '../components/RecentNotes';
 import Image from "next/image";
+import { register } from "../lib/api/auth";
 
 import cartoon from "../assets/images/Group 5.png";
 type DashboardProps = {
-  name: string;
+  name: ()=> void | string;
 };
 
 export default function Dashboard({ name }: DashboardProps) {
