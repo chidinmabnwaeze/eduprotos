@@ -10,15 +10,17 @@ import {
   PlusCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { PostgrestError } from "@supabase/supabase-js";
-import { getCourses } from "../lib/api/courses_api";
-import { getCoursesByLecturerId } from "../lib/api/courses_api";
-import { getCurrentUser } from "../lib/api/auth";
-import { getUser } from "../lib/api/auth";
 import { supabase } from "../lib/supabaseClient";
+import { createLecture } from "../lib/api/courses_api";
 
 type LectureFile = { name: string; url: string };
-type Lecture = { number: string; title: string; files: LectureFile[] };
+type Lecture = {
+  id: string;
+  lecture_no: number;
+  title: string;
+  quiz?: string;
+  files: LectureFile[];
+};
 
 export default function Courses() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,11 +31,13 @@ export default function Courses() {
   const [lectureNumber, setLectureNumber] = useState("");
   const [lectureTitle, setLectureTitle] = useState("");
 
-  const [lectures, setLectures] = useState<Lecture[]>([
-    { number: "1", title: "Introduction to the course", files: [] },
-    { number: "2", title: "Introduction to prepositions", files: [] },
-    { number: "3", title: "History of English", files: [] },
-  ]);
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+  //   [
+  //   { number: "1", title: "Introduction to the course", files: [] },
+  //   { number: "2", title: "Introduction to prepositions", files: [] },
+  //   { number: "3", title: "History of English", files: [] },
+  // ]
+
 
   const toggleLecture = (index: number) => {
     setExpandedIndex((prev) => (prev === index ? null : index));
@@ -53,68 +57,108 @@ export default function Courses() {
   const [courses, setCourses]: any[] = useState([]);
   const [fetchError, setFetchError] = useState("");
 
-  // useEffect(() => {
-  //   async function fetchData() {
-  //     const { data, error } = await getCourses();
+  useEffect(() => {
+    async function fetchCourse() {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-  //     if (data) {
-  //       setCourses(data);
-  //       setFetchError("");
-  //       console.log("Courses data:", data);
-  //     }
-  //     if (error) {
-  //       setFetchError(error.message);
-  //       setCourses([]);
-  //       console.log("Error fetching courses:", error.message);
-  //     }
-  //   }
-  //   fetchData();
-  // }, []);
+      if (sessionError || !session) {
+        setFetchError("No user logged in");
+        return;
+      }
 
-  // get course by id
-  // useEffect(() => {
-  //   async function fetchCourse(id: number) {
-  //     const courseId = courses.id;
-  //     const { data, error } = await getCourseById(courseId);
+      const user = session.user;
 
-  //    if (data){
-  //       console.log("Course data by ID:", data);
-  //    }
-  //     if (error){
-  //       console.log("Error fetching course by ID:", error.message);
-  //     }
-  //   }
-  //   fetchCourse(courses.id);
-  // }, []);
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, course_title, course_code, lecturer_id(full_name)")
+        .eq("lecturer_id", user.id);
 
+      if (error) {
+        console.log("Error fetching courses by Lecturer ID:", error.message);
+        setFetchError(error.message);
+        return;
+      }
+
+      setCourses(data || []);
+      setFetchError("");
+    }
+
+    fetchCourse();
+  }, []);
+
+//get course lectures by course id
 useEffect(() => {
-  async function fetchCourse() {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (!courses || courses.length === 0) return;
 
-    if (sessionError || !session) {
-      setFetchError("No user logged in");
-      return;
-    }
+  const courseId = courses[0].id; // first course
+  fetchLectures(courseId);
+}, [courses]);
 
-    const user = session.user;
+const fetchLectures = async (courseId: string) => {
+  const { data, error } = await supabase
+    .from("lectures")
+    .select("*")
+    .eq("course_id", courseId)
+    .order("lecture_no", { ascending: true });
 
-    const { data, error } = await supabase
-      .from("courses")
-      .select("id, course_title, course_code, lecturer_id(full_name)")
-      .eq("lecturer_id", user.id);
-
-    if (error) {
-      console.log("Error fetching courses by Lecturer ID:", error.message);
-      setFetchError(error.message);
-      return;
-    }
-
-    setCourses(data || []);
-    setFetchError("");
+  if (error) {
+    console.log("Error fetching lectures:", error.message);
+    return;
   }
 
-  fetchCourse();
-}, []);
+  // Ensure files key exists so UI doesn't break
+  const formatted = data.map((lec) => ({
+    ...lec,
+    files: []
+  }));
+
+  setLectures(formatted);
+};
+
+
+  //add lectures
+const addLecture = async () => {
+  if (!lectureNumber || !lectureTitle) return;
+
+   const courseId = courses[0]?.id;
+  if (!courseId) {
+    console.log("Course ID missing!");
+    return;
+  }
+
+  const newLecture = {
+    lecture_no: Number(lectureNumber),
+    title: lectureTitle,
+    course_id: courseId,
+  };
+
+  const { data, error } = await createLecture(newLecture);
+
+  if (error) {
+    console.log("Error creating lecture:", error.message);
+    return;
+  }
+
+  // Update frontend list
+  // setLectures((prev) => [...(prev || []), data[0]]);
+
+  setLectures((prev) => [
+    ...prev,
+    { ...data[0], files: [] }
+  ]);
+
+  // console.log("Lecture created:", data);
+  console.log("Lecture created:", data[0]);
+
+  // reset form
+  setLectureNumber("");
+  setLectureTitle("");
+  closeModal();
+};
+
 
 
   return (
@@ -129,7 +173,7 @@ useEffect(() => {
           <section className="flex flex-col gap-6 col-span-1 xl:col-span-2">
             {/* Header */}
             <div className="flex items-center w-full mb-6">
-               {fetchError && <p className="text-red-500">{fetchError}</p>}
+              {fetchError && <p className="text-red-500">{fetchError}</p>}
               {courses &&
                 courses.map((course: any) => (
                   <div className="flex flex-col" key={course.id}>
@@ -158,12 +202,12 @@ useEffect(() => {
                 Course content
               </h1>
 
-              {lectures.length === 0 && (
+              {lectures?.length === 0 && (
                 <p className="text-gray-500">No lectures created yet.</p>
               )}
 
               <div className="divide-y">
-                {lectures.map((lec, index) => (
+                {lectures?.map((lec, index) => (
                   <LectureRow
                     key={index}
                     index={index}
@@ -204,17 +248,7 @@ useEffect(() => {
             <div className="flex justify-center gap-4 mt-6">
               <button
                 className="px-6 py-3 bg-[#5955B3] text-white rounded-lg text-base font-semibold"
-                onClick={() => {
-                  if (lectureNumber && lectureTitle) {
-                    setLectures([
-                      ...lectures,
-                      { number: lectureNumber, title: lectureTitle, files: [] },
-                    ]);
-                    setLectureNumber("");
-                    setLectureTitle("");
-                    closeModal();
-                  }
-                }}
+                onClick={addLecture}
               >
                 Save
               </button>
@@ -260,7 +294,7 @@ function LectureRow({
         onClick={() => toggleLecture(index)}
       >
         <span className="font-medium text-lg text-black">
-          Lecture {lec.number}: {lec.title}
+          Lecture {lec.lecture_no}: {lec.title}
         </span>
         {isOpen ? (
           <ChevronUp className="w-5 h-5 text-black" />

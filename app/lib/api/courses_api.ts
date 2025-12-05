@@ -11,21 +11,6 @@ export const getCourses = async () => {
   return { data, error };
 };
 
-// export const getLecturers = async () => {
-//   const { data, error } = await supabase.from("profiles").select(`
-//       *
-//     `);
-//   return { data, error };
-// };
-
-// export const getLecturerById = async (lecturer_id: number | string) => {
-//   const { data, error } = await supabase
-//     .from("profiles")
-//     .select(`*`)
-//     .eq("id", lecturer_id)
-//     .maybeSingle();
-//   return { data, error };
-// };
 
 export async function CreateLecturer(name: string) {
   // Check if a profile already exists
@@ -48,15 +33,6 @@ export async function CreateLecturer(name: string) {
 
   return newProfile.id;
 }
-
-// export const getCourseById = async (courseId: number) => {
-//   const { data, error } = await supabase
-//     .from("courses")
-//     .select(`*, lecturer:lecturer_id(full_name)`)
-//     .eq("id", courseId)
-//     .single();
-//   return { data, error };
-// };
 
 // Get courses for the logged-in lecturer
 export const getCoursesByLecturerId = async () => {
@@ -91,6 +67,35 @@ export const postCourse = async (course: {
   ]);
   return { data, error };
 };
+
+// getLectures api
+export const getlectures = async()=>{
+  const {data, error} = await supabase
+  .from('lectures')
+  .select('*');
+  return{ data, error}
+}
+
+//create lecture api
+export const createLecture = async(lecture:{
+  lecture_no: number;
+  title: string;
+  quiz?: string;
+  course_id?: string;
+})=>{
+  const {data, error} = await supabase
+  .from('lectures')
+  .insert([
+    {
+      lecture_no: lecture.lecture_no,
+      title: lecture.title,
+      course_id: lecture.course_id,
+    }
+  ])
+  .select()
+  .single();
+  return {data, error};
+}
 
 //delete course api
 export const deleteCourse = async (courseId: number) => {
