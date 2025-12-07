@@ -7,6 +7,7 @@ import QuestionEditor from "../components/Quizanswer";
 import QuestionPreview from "../components/Seequestion";
 import { Question } from "@/types";
 import Link from "next/link";
+import { createQuestion } from "../lib/api/quiz";
 
 export default function Quiz() {
   const [questions, setQuestions] = useState<Question[]>([]);

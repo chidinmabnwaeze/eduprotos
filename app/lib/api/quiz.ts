@@ -35,18 +35,18 @@ export async function getQuizById(quizId: number) {
 //Create quiz
 export const createQuiz = async (quiz: {
   title: string;
-  description: string;
-  duration_minutes: Date;
-  courseId: string;
+//   description: string;
+//   duration_minutes: Date;
+  lecture_id: string;
 }) => {
   const { data, error } = await supabase
     .from("quiz")
     .insert([
       {
         title: quiz.title,
-        description: quiz.description,
-        duration: quiz.duration_minutes,
-        course_id: quiz.courseId,
+        // description: quiz.description,
+        // duration: quiz.duration_minutes,
+        lecture_id: quiz.lecture_id,
       },
     ])
     .select()
@@ -115,4 +115,14 @@ export async function submitQuiz(
     .insert(formattedAnswers);
 
   return { data: submission, error: answersError };
+}
+
+// delete quiz
+export async function deleteQuiz(quizId: number) {
+  const { error } = await supabase
+    .from("quizzes")
+    .delete()
+    .eq("id", quizId);
+
+  return { error };
 }
