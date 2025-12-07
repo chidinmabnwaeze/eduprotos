@@ -35,18 +35,18 @@ export async function getQuizById(quizId: number) {
 //Create quiz
 export const createQuiz = async (quiz: {
   title: string;
+  lecture_id: string;
 //   description: string;
 //   duration_minutes: Date;
-  lecture_id: string;
 }) => {
   const { data, error } = await supabase
     .from("quiz")
     .insert([
       {
         title: quiz.title,
+        lecture_id: quiz.lecture_id,
         // description: quiz.description,
         // duration: quiz.duration_minutes,
-        lecture_id: quiz.lecture_id,
       },
     ])
     .select()

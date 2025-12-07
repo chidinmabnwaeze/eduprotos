@@ -7,7 +7,8 @@ import QuestionEditor from "../components/Quizanswer";
 import QuestionPreview from "../components/Seequestion";
 import { Question } from "@/types";
 import Link from "next/link";
-import { createQuestion } from "../lib/api/quiz";
+import { createQuestion, createQuiz, createOption } from "../lib/api/quiz";
+
 
 export default function Quiz() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -65,6 +66,58 @@ const updateQuestion = (i: number, updated: Question) => {
   };
 
   const currentQuestion = currentQuestionIndex !== null ? questions[currentQuestionIndex] : null;
+
+  //handle create quiz
+const handleCreateQuiz = async () => {
+  if (!quizName.trim()) {
+    alert("Quiz name is required!");
+    return;
+  }
+
+  // 1️⃣ Create quiz
+  const { data: quiz, error: quizError } = await createQuiz(<quiz className="title"></quiz>,  );
+  if (quizError) {
+    console.error("Quiz Error:", quizError);
+    alert("Error creating quiz");
+    return;
+  }
+
+  const quizId = quiz.id;
+  console.log("Quiz created:", quizId);
+
+  // 2️⃣ Save each question
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+
+    const { data: savedQuestion, error: questionError } = await createQuestion(
+      quizId,
+      q.title,
+      i + 1 // position
+    );
+
+    if (questionError) {
+      console.error("Question Error:", questionError);
+      continue;
+    }
+
+    const questionId = savedQuestion.id;
+
+    // 3️⃣ Save options
+    q.options.forEach(async (opt, index) => {
+      const correct = selectedAnswer[i] === opt;
+
+      await createOption(
+        questionId,
+        opt,
+        correct,
+        index + 1 // option order
+      );
+    });
+  }
+
+  alert("Quiz created successfully!");
+};
+
 
   return (
     <div className="flex w-full bg-white min-h-screen">
