@@ -8,6 +8,7 @@ import QuestionPreview from "../components/Seequestion";
 import { Question } from "@/types";
 import Link from "next/link";
 import { createQuestion, createQuiz, createOption } from "../lib/api/quiz";
+import { useParams, useSearchParams } from "next/navigation";
 
 
 export default function Quiz() {
@@ -15,6 +16,8 @@ export default function Quiz() {
   const [quizName, setQuizName] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<{ [key: number]: string }>({});
+  const searchParams = useSearchParams();
+  const lecture_id = searchParams.get("lecture_id") || "";
 
   const addQuestion = () => {
     const newQuestion: Question = {
@@ -68,19 +71,26 @@ const updateQuestion = (i: number, updated: Question) => {
   const currentQuestion = currentQuestionIndex !== null ? questions[currentQuestionIndex] : null;
 
   //handle create quiz
-const handleCreateQuiz = async () => {
+  const handleCreateQuiz = async () => {
+// use your state instead
+
   if (!quizName.trim()) {
     alert("Quiz name is required!");
     return;
   }
+if (!lecture_id) {
+  alert("Lecture ID missing — quiz must belong to a lecture");
+  return;
+}
 
   // 1️⃣ Create quiz
-  const { data: quiz, error: quizError } = await createQuiz(<quiz className="title"></quiz>,  );
+  const { data: quiz, error: quizError } = await createQuiz(quizName, lecture_id);
   if (quizError) {
     console.error("Quiz Error:", quizError);
     alert("Error creating quiz");
     return;
   }
+ 
 
   const quizId = quiz.id;
   console.log("Quiz created:", quizId);
@@ -119,7 +129,7 @@ const handleCreateQuiz = async () => {
 };
 
 
-  return (
+  return  (
     <div className="flex w-full bg-white min-h-screen">
       <Sidebar />
 
@@ -229,7 +239,9 @@ const handleCreateQuiz = async () => {
                     <Eye className="w-4 h-4" />
                     Preview
                   </button>
-                  <button className="flex items-center gap-2 bg-[#5955B3] text-white px-4 py-2 rounded-md hover:bg-[#4b49a0] transition font-medium text-sm">
+                  <button
+                  onClick={handleCreateQuiz}
+                  className="flex items-center gap-2 bg-[#5955B3] text-white px-4 py-2 rounded-md hover:bg-[#4b49a0] transition font-medium text-sm">
                     <FilePlus2 className="w-4 h-4" />
                     Create Quiz
                   </button>
