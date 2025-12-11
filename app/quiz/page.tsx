@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { Eye, FilePlus2, ArrowBigLeft, PlusCircle } from "lucide-react";
 import QuestionEditor from "../components/Quizanswer";
@@ -8,10 +8,10 @@ import QuestionPreview from "../components/Seequestion";
 import { Question } from "@/types";
 import Link from "next/link";
 import { createQuestion, createQuiz, createOption } from "../lib/api/quiz";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 
-export default function Quiz() {
+function Quiz() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [quizName, setQuizName] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number | null>(null);
@@ -153,8 +153,6 @@ export default function Quiz() {
 
   toast.success("Quiz created successfully!");
 };
-
-
   return (
     <div className="flex w-full bg-white min-h-screen">
       <Sidebar />
@@ -313,5 +311,13 @@ export default function Quiz() {
         </main>
       </section>
     </div>
+  );
+}
+
+export default function QuizPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Quiz />
+    </Suspense>
   );
 }
